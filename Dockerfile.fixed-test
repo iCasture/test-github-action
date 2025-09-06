@@ -1,0 +1,23 @@
+# Test Dockerfile with the fixed install-mitmproxy script
+FROM alpine:3.22
+
+# Install dependencies
+RUN apk add --no-cache bash curl
+
+# Copy the fixed script
+COPY install-mitmproxy-fixed.sh /tmp/install-mitmproxy-fixed.sh
+RUN chmod +x /tmp/install-mitmproxy-fixed.sh
+
+# Test with TARGETPLATFORM set (like in Docker buildx)
+ARG TARGETPLATFORM=linux/amd64
+ENV TARGETPLATFORM=${TARGETPLATFORM}
+
+# Test the fixed script
+RUN echo "=== Testing fixed install-mitmproxy script ===" && \
+    /tmp/install-mitmproxy-fixed.sh
+
+# Verify installation
+RUN echo "=== Verifying installation ===" && \
+    mitmproxy --version && \
+    mitmdump --version && \
+    mitmweb --version

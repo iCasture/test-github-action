@@ -1,0 +1,38 @@
+# Test Dockerfile that closely mimics the original docker-network-helper setup
+FROM alpine:3.22
+
+# Install dependencies exactly like in the original Dockerfile
+RUN apk add --no-cache bash curl
+
+# Copy the test scripts
+COPY test-docker-build.sh /tmp/install-mitmproxy.sh
+COPY test-docker-build-network.sh /tmp/test-docker-build-network.sh
+RUN chmod +x /tmp/install-mitmproxy.sh /tmp/test-docker-build-network.sh
+
+# Test with TARGETPLATFORM set (like in Docker buildx)
+ARG TARGETPLATFORM=linux/amd64
+ENV TARGETPLATFORM=${TARGETPLATFORM}
+
+# Run comprehensive network debugging
+RUN echo "=== Testing in Docker build environment with TARGETPLATFORM=$TARGETPLATFORM ===" && \
+    /tmp/test-docker-build-network.sh
+
+# Test the exact command from the original setup script
+RUN echo "=== Testing original script method ===" && \
+    /tmp/install-mitmproxy.sh
+
+# Test the exact curl command from the original script
+RUN echo "=== Testing exact curl command in Docker build ===" && \
+    version=$(curl -s "https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest" | \
+        grep '"tag_name"' | \
+        cut -d'"' -f4 | \
+        sed 's/^v//' | \
+        tr -d '\n\r') && \
+    echo "Version in Docker build: '$version'" && \
+    echo "Length: ${#version}" && \
+    if [ -z "$version" ]; then \
+        echo "ERROR: Version is empty in Docker build!"; \
+        exit 1; \
+    else \
+        echo "SUCCESS: Version found in Docker build"; \
+    fi
