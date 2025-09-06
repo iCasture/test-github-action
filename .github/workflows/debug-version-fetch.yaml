@@ -1,0 +1,180 @@
+name: Debug mitmproxy Version Fetch
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  debug-version-fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Debug version fetch in GitHub Actions
+        run: |
+          echo "=== Running debug script in GitHub Actions ==="
+          ./test-version-fetch.sh
+
+  debug-in-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Debug version fetch in Docker (Alpine)
+        run: |
+          echo "=== Testing in Docker Alpine container ==="
+          docker run --rm -v "$PWD:/workspace" -w /workspace alpine:3.22 sh -c "
+            apk add --no-cache curl bash &&
+            ./test-version-fetch.sh
+          "
+
+      - name: Debug version fetch in Docker (Ubuntu)
+        run: |
+          echo "=== Testing in Docker Ubuntu container ==="
+          docker run --rm -v "$PWD:/workspace" -w /workspace ubuntu:22.04 sh -c "
+            apt-get update && apt-get install -y curl bash &&
+            ./test-version-fetch.sh
+          "
+
+  debug-with-different-curl-versions:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        curl-version: [7.68.0, 7.81.0, 7.88.1, latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install specific curl version
+        if: matrix.curl-version != 'latest'
+        run: |
+          echo "Installing curl version ${{ matrix.curl-version }}"
+          # This is a simplified approach - in practice you might need to build from source
+          sudo apt-get update
+          sudo apt-get install -y curl
+          curl --version
+
+      - name: Debug with curl version ${{ matrix.curl-version }}
+        run: |
+          echo "=== Testing with curl version ${{ matrix.curl-version }} ==="
+          curl --version
+          ./test-version-fetch.sh
+
+  debug-network-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test network connectivity
+        run: |
+          echo "=== Network connectivity tests ==="
+          echo "Testing DNS resolution..."
+          nslookup api.github.com
+
+          echo "Testing HTTP connectivity..."
+          curl -I https://api.github.com
+
+          echo "Testing specific API endpoint..."
+          curl -I https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest
+
+          echo "Testing with different protocols..."
+          curl -v --http1.1 https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest 2>&1 | head -20
+
+      - name: Test with different DNS servers
+        run: |
+          echo "=== Testing with different DNS servers ==="
+          echo "Using Google DNS..."
+          curl -s --dns-servers 8.8.8.8 https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest | head -c 200
+          echo ""
+
+          echo "Using Cloudflare DNS..."
+          curl -s --dns-servers 1.1.1.1 https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest | head -c 200
+          echo ""
+
+  debug-api-response-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Analyze API response format
+        run: |
+          echo "=== Analyzing API response format ==="
+
+          echo "Fetching raw response..."
+          response=$(curl -s "https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest")
+
+          echo "Response length: ${#response}"
+          echo "First 500 characters:"
+          echo "$response" | head -c 500
+          echo ""
+
+          echo "Checking for tag_name field..."
+          if echo "$response" | grep -q '"tag_name"'; then
+            echo "✓ tag_name field found"
+            echo "tag_name line:"
+            echo "$response" | grep '"tag_name"'
+          else
+            echo "✗ tag_name field not found"
+          fi
+
+          echo "Checking response structure..."
+          echo "Response starts with:"
+          echo "$response" | head -c 100
+          echo ""
+
+          echo "Response ends with:"
+          echo "$response" | tail -c 100
+          echo ""
+
+          echo "Checking for JSON validity..."
+          if echo "$response" | jq . >/dev/null 2>&1; then
+            echo "✓ Valid JSON response"
+          else
+            echo "✗ Invalid JSON response"
+            echo "First 200 chars:"
+            echo "$response" | head -c 200
+          fi
+
+  debug-timing-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test timing and rate limiting
+        run: |
+          echo "=== Testing timing and rate limiting ==="
+
+          for i in {1..5}; do
+            echo "Attempt $i:"
+            start_time=$(date +%s.%N)
+
+            version=$(curl -s "https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest" | \
+              grep '"tag_name"' | \
+              cut -d'"' -f4 | \
+              sed 's/^v//' | \
+              tr -d '\n\r')
+
+            end_time=$(date +%s.%N)
+            duration=$(echo "$end_time - $start_time" | bc)
+
+            echo "  Duration: ${duration}s"
+            echo "  Version: '$version'"
+            echo "  Length: ${#version}"
+
+            if [ -z "$version" ]; then
+              echo "  ✗ Empty version!"
+            else
+              echo "  ✓ Version found"
+            fi
+
+            echo ""
+            sleep 1
+          done

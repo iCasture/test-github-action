@@ -1,0 +1,43 @@
+# Test Dockerfile to debug version fetch issues
+FROM alpine:3.22
+
+# Install dependencies
+RUN apk add --no-cache curl bash
+
+# Copy test script
+COPY test-docker-build.sh /tmp/test-docker-build.sh
+RUN chmod +x /tmp/test-docker-build.sh
+
+# Test with different TARGETPLATFORM values
+RUN echo "=== Testing with TARGETPLATFORM=linux/amd64 ===" && \
+    TARGETPLATFORM=linux/amd64 /tmp/test-docker-build.sh
+
+RUN echo "=== Testing with TARGETPLATFORM=linux/arm64 ===" && \
+    TARGETPLATFORM=linux/arm64 /tmp/test-docker-build.sh
+
+# Test the exact curl command from the original script
+RUN echo "=== Testing exact curl command ===" && \
+    version=$(curl -s "https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest" | \
+    grep '"tag_name"' | \
+    cut -d'"' -f4 | \
+    sed 's/^v//' | \
+    tr -d '\n\r') && \
+    echo "Version: '$version'" && \
+    echo "Length: ${#version}"
+
+# Test with verbose output
+RUN echo "=== Testing with verbose curl ===" && \
+    curl -v "https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest" 2>&1 | head -20
+
+# Test API response analysis
+RUN echo "=== Analyzing API response ===" && \
+    response=$(curl -s "https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest") && \
+    echo "Response length: ${#response}" && \
+    echo "First 200 chars:" && \
+    echo "$response" | head -c 200 && \
+    echo "" && \
+    echo "Contains tag_name:" && \
+    echo "$response" | grep -c '"tag_name"' || echo "0"
+
+# Add a CMD to run the test when container starts
+CMD ["/tmp/test-docker-build.sh"]
