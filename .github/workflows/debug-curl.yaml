@@ -1,0 +1,47 @@
+name: Debug mitmproxy Version Fetch
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  debug-version-fetch-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x ./test-curl.sh
+
+      - name: Debug version fetch in GitHub Actions (script)
+        run: ./test-curl.sh
+
+  debug-version-fetch-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set build metadata
+        id: set-build-metadata
+        uses: ./.github/actions/set-build-metadata
+
+      - name: Debug version fetch in GitHub Actions (docker)
+        uses: docker/build-push-action@v6
+        with:
+          context: .                                          # Build context is current directory
+          file: ./Dockerfile.curl                             # Use the variant-specific Dockerfile
+          pull: true                                          # Always pull the latest base image
+          push: false                                         # Push the image to registry after build
+          # platforms: ${{ matrix.platforms }}                  # Target multi-platform builds
+          # tags: ${{ steps.set-tags-advanced.outputs.tags }}
+          # cache-from: type=gha,scope=docker-network-helper-${{ github.run_id }}-${{ github.run_attempt }}
+          # cache-to:   type=gha,mode=max,scope=docker-network-helper-${{ github.run_id }}-${{ github.run_attempt }}
+          build-args: |                                       # Force rebuild each workflow run by using BUILD_EPOCH as a cache-busting argument
+            BUILD_DATE=${{ steps.set-build-metadata.outputs.date }}
+            BUILD_EPOCH=${{ github.run_id }}-${{ github.run_attempt }}
+            GIT_COMMIT=${{ steps.set-build-metadata.outputs['sha-short'] }}

@@ -31,14 +31,14 @@ print_warning() {
 # Test network connectivity first
 test_network_connectivity() {
     print_info "=== Testing network connectivity ==="
-    
+
     # Test basic connectivity
     if ping -c 1 api.github.com >/dev/null 2>&1; then
         print_info "✓ Ping to api.github.com successful"
     else
         print_warning "✗ Ping to api.github.com failed"
     fi
-    
+
     # Test HTTPS connectivity
     if curl -s --connect-timeout 10 "https://api.github.com" >/dev/null; then
         print_info "✓ HTTPS connection to api.github.com successful"
@@ -46,12 +46,12 @@ test_network_connectivity() {
         print_error "✗ HTTPS connection to api.github.com failed"
         return 1
     fi
-    
+
     # Test specific API endpoint
     local status_code
     status_code=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/mitmproxy/mitmproxy/releases/latest")
     print_debug "HTTP status code: $status_code"
-    
+
     if [ "$status_code" = "200" ]; then
         print_info "✓ API endpoint returns 200 OK"
     elif [ "$status_code" = "403" ]; then
@@ -66,7 +66,7 @@ test_network_connectivity() {
 # Test the exact function from the original script
 test_version_fetch() {
     print_info "=== Testing version fetch (exact original method) ==="
-    
+
     print_info "Fetching latest mitmproxy version from GitHub API ..." >&2
 
     local version
@@ -91,7 +91,7 @@ test_version_fetch() {
 # Test with proper User-Agent
 test_version_fetch_with_ua() {
     print_info "=== Testing version fetch with proper User-Agent ==="
-    
+
     print_info "Fetching latest mitmproxy version from GitHub API with User-Agent ..." >&2
 
     local version
@@ -115,7 +115,7 @@ test_version_fetch_with_ua() {
 # Test with different approaches
 test_alternative_methods() {
     print_info "=== Testing alternative methods ==="
-    
+
     # Method 1: With timeout
     print_debug "Method 1: With timeout"
     local version1
@@ -125,7 +125,7 @@ test_alternative_methods() {
         sed 's/^v//' | \
         tr -d '\n\r')
     print_debug "Timeout method result: '$version1'"
-    
+
     # Method 2: With retry
     print_debug "Method 2: With retry"
     local version2
@@ -142,7 +142,7 @@ test_alternative_methods() {
         sleep 1
     done
     print_debug "Retry method result: '$version2'"
-    
+
     # Method 3: With verbose output for debugging
     print_debug "Method 3: With verbose output"
     local response
@@ -150,7 +150,7 @@ test_alternative_methods() {
     print_debug "Verbose response (first 500 chars):"
     echo "$response" | head -c 500
     echo ""
-    
+
     local version3
     version3=$(echo "$response" | grep '"tag_name"' | \
         cut -d'"' -f4 | \
@@ -162,7 +162,7 @@ test_alternative_methods() {
 # Test environment variables
 test_environment() {
     print_info "=== Testing environment variables ==="
-    
+
     print_debug "TARGETPLATFORM: ${TARGETPLATFORM:-not set}"
     print_debug "BUILDPLATFORM: ${BUILDPLATFORM:-not set}"
     print_debug "User: $(whoami)"
@@ -171,14 +171,14 @@ test_environment() {
     print_debug "SHELL: $SHELL"
     print_debug "LANG: ${LANG:-not set}"
     print_debug "LC_ALL: ${LC_ALL:-not set}"
-    
+
     # Check if we're in a container
     if [ -f /.dockerenv ]; then
         print_debug "Running inside Docker container"
     else
         print_debug "Not running inside Docker container"
     fi
-    
+
     # Check if we're in GitHub Actions
     if [ -n "${GITHUB_ACTIONS:-}" ]; then
         print_debug "Running in GitHub Actions"
@@ -195,25 +195,25 @@ main() {
     print_info "Starting Docker build network debugging..."
     print_info "Timestamp: $(date)"
     print_info "=========================================="
-    
+
     # Test environment
     test_environment
     echo ""
-    
+
     # Test network connectivity
     if ! test_network_connectivity; then
         print_error "Network connectivity test failed!"
         exit 1
     fi
     echo ""
-    
+
     # Test version fetch (original method - likely to fail)
     if version=$(test_version_fetch); then
         print_info "SUCCESS: Version fetched successfully with original method: '$version'"
     else
         print_warning "FAILED: Original method failed (expected due to 403)"
         echo ""
-        
+
         # Test with User-Agent
         if version=$(test_version_fetch_with_ua); then
             print_info "SUCCESS: Version fetched successfully with User-Agent: '$version'"
@@ -225,11 +225,11 @@ main() {
         fi
     fi
     echo ""
-    
+
     # Test alternative methods
     test_alternative_methods
     echo ""
-    
+
     print_info "=========================================="
     print_info "Docker build network debugging completed!"
 }

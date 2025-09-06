@@ -10,7 +10,7 @@
 
 ### 1. 环境差异
 - **本地环境**：有适当的 User-Agent 和网络环境，GitHub API 正常响应
-- **GitHub Actions 直接运行**：网络环境正常，GitHub API 正常响应  
+- **GitHub Actions 直接运行**：网络环境正常，GitHub API 正常响应
 - **Docker 构建环境**：被 GitHub API 识别为可疑请求源，返回 403 Forbidden
 
 ### 2. 具体表现
@@ -81,7 +81,7 @@ get_latest_version() {
                     cut -d'"' -f4 | \
                     sed 's/^v//' | \
                     tr -d '\n\r')
-                
+
                 if [ -n "$version" ]; then
                     print_info "Successfully fetched version using method $((i+1)): '$version'" >&2
                     break

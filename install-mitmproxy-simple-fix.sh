@@ -61,7 +61,7 @@ get_latest_version() {
     print_info "Fetching latest mitmproxy version from GitHub API ..." >&2
 
     local version
-    
+
     # FIXED: Add proper User-Agent and Accept headers to avoid 403 Forbidden
     version=$(curl -s \
         -H "User-Agent: mitmproxy-installer/1.0" \

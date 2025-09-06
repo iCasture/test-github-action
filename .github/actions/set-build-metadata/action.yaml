@@ -1,0 +1,47 @@
+name: 'Set build metadata'
+description: 'Set common build metadata like lowercase repo owner and short Git SHA'
+
+outputs:
+  owner:
+    description: 'Repository owner name (original case)'
+    value: ${{ steps.set-owner.outputs.owner }}
+  owner-lowercase:
+    description: 'Lowercase repository owner name'
+    value: ${{ steps.set-owner.outputs.owner-lowercase }}
+  sha-short:
+    description: 'Short Git SHA (7 characters)'
+    value: ${{ steps.set-sha.outputs.sha-short }}
+  date:
+    description: 'Build date in CST'
+    value: ${{ steps.date.outputs.value }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set repo owner (original and lowercase)
+      id: set-owner
+      shell: bash
+      run: |
+        echo "owner=${{ github.repository_owner }}" >> $GITHUB_OUTPUT
+        echo "owner-lowercase=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+    - name: Get short Git SHA
+      id: set-sha
+      shell: bash
+      run: echo "sha-short=$(echo ${GITHUB_SHA:0:7})" >> $GITHUB_OUTPUT
+
+    - name: Install required packages
+      shell: bash
+      run: |
+        sudo apt-get update && \
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends \
+        coreutils \
+        tzdata
+
+    - name: Compute build timestamp (CST, ISO-8601 with milliseconds)
+      id: date
+      shell: bash
+      run: |
+        # e.g. 2025-09-06T22:24:57.132+08:00
+        DATE=$(TZ=Asia/Shanghai date '+%Y-%m-%d')
+        echo "value=$DATE" >> "$GITHUB_OUTPUT"

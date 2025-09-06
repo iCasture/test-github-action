@@ -1,0 +1,33 @@
+ARG UBUNTU_VER=24.04
+
+FROM ubuntu:${UBUNTU_VER} AS dnsx-builder
+
+ARG BUILD_DATE=unknown
+ARG BUILD_EPOCH=unknown
+ARG GIT_COMMIT=unknown
+
+# Add a label to record the build epoch.
+# This serves as a cache-busting mechanism: each CI run injects a unique value,
+# which forces Docker to rebuild layers even if the Dockerfile hasn’t changed.
+LABEL build.date="${BUILD_DATE}" \
+      build.epoch="${BUILD_EPOCH}" \
+      build.git_commit="${GIT_COMMIT}"
+
+# Enable Docker buildx platform detection
+ARG TARGETPLATFORM
+
+# Install dependencies for mitmproxy installation
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    bash \
+    curl \
+    tar \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy all mitmproxy setup scripts
+COPY test-curl.sh /tmp/test-curl.sh
+
+# Setup mitmproxy based on platform support
+RUN chmod +x /tmp/test-curl.sh
+RUN TARGETPLATFORM=${TARGETPLATFORM} /tmp/test-curl.sh

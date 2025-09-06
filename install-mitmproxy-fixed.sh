@@ -73,7 +73,7 @@ get_latest_version() {
     for i in "${!methods[@]}"; do
         local method="${methods[$i]}"
         print_debug "Trying method $((i+1)): $method" >&2
-        
+
         local response
         if response=$(eval "$method" 2>/dev/null); then
             # Check if response contains tag_name
@@ -83,14 +83,14 @@ get_latest_version() {
                     cut -d'"' -f4 | \
                     sed 's/^v//' | \
                     tr -d '\n\r')
-                
+
                 if [ -n "$version" ]; then
                     print_info "Successfully fetched version using method $((i+1)): '$version'" >&2
                     break
                 fi
             fi
         fi
-        
+
         # Add delay between attempts to avoid rate limiting
         if [ $i -lt $((${#methods[@]} - 1)) ]; then
             sleep 1
@@ -100,7 +100,7 @@ get_latest_version() {
     # If all methods failed, try with a hardcoded fallback version
     if [ -z "$version" ]; then
         print_warning "All API methods failed, using fallback version detection" >&2
-        
+
         # Try to get version from a different source or use a known recent version
         # This is a fallback - in practice you might want to use a different approach
         local fallback_version="12.1.2"  # Update this periodically
